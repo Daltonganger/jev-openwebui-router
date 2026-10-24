@@ -3,7 +3,7 @@ title: Jev Router
 author: Daltonganger
 author_url: https://github.com/Daltonganger/jev-openwebui-router
 description: Routes each chat turn to the model and reasoning effort a decision model picks: TypeSafe's Jev (direct or on OpenRouter), OpenRouter's Decisions API, your own Laya server, or vLLM Semantic Router's d3-turbo.
-version: 0.1.0
+version: 0.2.0
 license: MIT
 required_open_webui_version: 0.5.0
 """
@@ -641,6 +641,18 @@ def last_user_text(messages: Any) -> str:
     return ""
 
 
+EFFORT_SLOT = "{effort}"
+
+
+def resolved_model(template: str, effort: Optional[str], default: str = "medium") -> str:
+    """
+    A model id with `{effort}` in it carries the effort in its name
+    (`cursor/claude-opus-5-5-{effort}` → `cursor/claude-opus-5-5-high`), for
+    connections that list one model per effort. With no effort known, `default`.
+    """
+    return template.replace(EFFORT_SLOT, effort or default)
+
+
 def pct(x: float) -> str:
     return f"{round(x * 100)}%"
 
@@ -658,7 +670,7 @@ class Pipe:
         # Where each tier runs. A tier left empty is not offered to the decision model.
         HAIKU_MODEL: str = Field(
             default="",
-            description="Open WebUI model id for trivial requests (Jev's 'haiku' tier): a lookup, a yes or no, restating. E.g. gpt-5-mini, anthropic/claude-haiku-5-5, llama3.2:3b.",
+            description="Open WebUI model id for trivial requests (Jev's 'haiku' tier): a lookup, a yes or no, restating. E.g. gpt-5-mini, anthropic/claude-haiku-5-5, llama3.2:3b. {effort} in the id is replaced by the effort (cursor/claude-haiku-5-5-{effort}), and then no reasoning_effort is sent.",
         )
         SONNET_MODEL: str = Field(
             default="",
@@ -784,11 +796,13 @@ class Pipe:
         def fallback(why: str, ms: int = 0) -> Plan:
             tier = previous or nearest_tier(self.valves.FALLBACK_TIER, offered)
             where = "stayed" if previous else "fallback"
-            return Plan(tier, models[tier], None, f"{tier} · {where}: {why} → {models[tier]}", failed=why, ms=ms)
+            model = resolved_model(models[tier], None)
+            return Plan(tier, model, None, f"{tier} · {where}: {why} → {model}", failed=why, ms=ms)
 
         if len(offered) == 1:
             only = offered[0]
-            return Plan(only, models[only], None, f"{only} · the only tier filled in → {models[only]}")
+            model = resolved_model(models[only], None)
+            return Plan(only, model, None, f"{only} · the only tier filled in → {model}")
 
         cfg = self.config()
         routes, why = routes_of(cfg)
@@ -814,11 +828,12 @@ class Pipe:
             tier, held = sticky_tier(fresh, previous, bar, offered)
 
         said = f"{fresh.decider} {pct(fresh.confidence)}"
+        model = resolved_model(models[tier], fresh.effort)
         if held:
-            status = f"{tier} · {fresh.effort} · held: {fresh.decider} said {held} at {pct(fresh.confidence)}, bar {pct(bar)} · {result['ms']}ms → {models[tier]}"
+            status = f"{tier} · {fresh.effort} · held: {fresh.decider} said {held} at {pct(fresh.confidence)}, bar {pct(bar)} · {result['ms']}ms → {model}"
         else:
-            status = f"{tier} · {fresh.effort} · {said} · {result['ms']}ms → {models[tier]}"
-        return Plan(tier, models[tier], fresh.effort, status, decision=fresh, held=held, ms=result["ms"])
+            status = f"{tier} · {fresh.effort} · {said} · {result['ms']}ms → {model}"
+        return Plan(tier, model, fresh.effort, status, decision=fresh, held=held, ms=result["ms"], extra={"template": models[tier]})
 
     def task_plan(self) -> Optional[Plan]:
         models = self.tier_models()
@@ -827,13 +842,16 @@ class Pipe:
             return None
         wanted = self.valves.TASK_TIER
         tier = offered[0] if wanted == "lowest" else nearest_tier(wanted, offered)
-        return Plan(tier, models[tier], None, f"task → {models[tier]}")
+        model = resolved_model(models[tier], None, "low")
+        return Plan(tier, model, None, f"task → {model}", extra={"template": models[tier]})
 
     def forward_body(self, body: dict, plan: Plan) -> dict:
         out = {**body, "model": plan.model}
         v = self.valves
+        # An effort already in the model's name is not sent a second time.
         if (
             plan.effort is not None
+            and EFFORT_SLOT not in plan.extra.get("template", "")
             and v.SEND_REASONING_EFFORT
             and plan.tier in tier_list_of(v.EFFORT_TIERS)
             and out.get("reasoning_effort") in (None, "")

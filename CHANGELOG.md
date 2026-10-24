@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.2.0 — 2026-10-24
+
+### Features
+
+- **`{effort}` in a tier's model id** is replaced by the decision model's
+  effort (`cursor/claude-opus-5-5-{effort}` → `cursor/claude-opus-5-5-high`),
+  for connections that list one model per effort. Such a model is sent no
+  `reasoning_effort`.
+
+### Chores
+
+- The README says how to register the model when Open WebUI answers
+  `Model not found` (`BYPASS_ADMIN_ACCESS_CONTROL` off).
+
 ## 0.1.0 — 2026-10-23
 
 ### Features

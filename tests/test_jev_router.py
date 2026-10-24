@@ -393,3 +393,22 @@ def test_pipe_without_models_says_what_to_fill_in():
     pipe = jr.Pipe()
     out = run(pipe.pipe({"model": "jev_router", "messages": []}))
     assert "HAIKU_MODEL" in out
+
+
+def test_effort_in_the_model_name():
+    assert jr.resolved_model("cursor/claude-opus-5-5-{effort}", "xhigh") == "cursor/claude-opus-5-5-xhigh"
+    assert jr.resolved_model("cursor/claude-opus-5-5-{effort}", None) == "cursor/claude-opus-5-5-medium"
+    assert jr.resolved_model("plain", "high") == "plain"
+    pipe = make_pipe(OPUS_MODEL="cursor/claude-opus-5-5-{effort}")
+    pipe._fetch = FakeFetch((200, jev_answer("opus", 0.9, 4)))
+    plan = run(pipe.decide([{"role": "user", "content": "x"}], None))
+    assert plan.model == "cursor/claude-opus-5-5-max" and plan.status.endswith("→ cursor/claude-opus-5-5-max")
+    body = pipe.forward_body({"model": "jev_router"}, plan)
+    assert body == {"model": "cursor/claude-opus-5-5-max"}
+
+
+def test_effort_in_the_model_name_on_fallback_and_tasks():
+    pipe = make_pipe(HAIKU_MODEL="cursor/claude-haiku-5-5-{effort}", SONNET_MODEL="cursor/claude-sonnet-5-5-{effort}")
+    pipe._fetch = FakeFetch((500, ""))
+    assert run(pipe.decide([{"role": "user", "content": "x"}], None)).model == "cursor/claude-sonnet-5-5-medium"
+    assert pipe.task_plan().model == "cursor/claude-haiku-5-5-low"

@@ -49,6 +49,12 @@ who decided and how sure it was, and how long the decision took.
    - **A decision model:** `PROVIDERS` and its key.
 4. Pick **Jev Router** as the model in a chat.
 
+If the chat answers `Model not found`, your instance runs with
+`BYPASS_ADMIN_ACCESS_CONTROL` off, which refuses any model that is not
+registered, admins included. Open **Admin Panel → Settings → Models → Jev
+Router**, and save it once with the access you want (yourself, a group, or
+public).
+
 Open WebUI does not update functions by itself. To get a newer version, paste
 `jev_router.py` over the old one. Your valves are kept.
 
@@ -71,6 +77,7 @@ your connection's prefix ID).
 
 - **Empty tiers:** a tier you leave empty is not offered to the decision model.
 - **One tier:** if only one tier is filled in, every turn goes there without asking anything.
+- **Effort in the name:** for connections that list one model per effort (Cursor's `claude-opus-5-5-low` … `-max`), put `{effort}` in the id: `cursor/claude-opus-5-5-{effort}`. The decision model's effort (low, medium, high, xhigh, max) fills it in, `medium` when there is none and `low` for background tasks, and no `reasoning_effort` is sent.
 - **Access:** the router hands the turn on as the user who sent it. So each user needs access to the tier models, not just to Jev Router.
 
 ## Effort
