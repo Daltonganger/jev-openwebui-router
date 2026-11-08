@@ -26,15 +26,15 @@ who decided and how sure it was, and how long the decision took.
 | `openrouter` | Jev on OpenRouter, System One endpoint | `OPENROUTER_API_KEY` | `OPENROUTER_MODEL` (`typesafe/jev-1.14`) |
 | `openrouter-decisions` (`decisions`) | OpenRouter's Decisions API, `https://openrouter.ai/api/alpha/decisions` | `OPENROUTER_API_KEY` | `OPENROUTER_DECISIONS_MODEL` (`typesafe/jev-1.14`) |
 | `laya` | Your own Laya server, `LAYA_BASE_URL` (https) | `LAYA_API_KEY` (optional) | `LAYA_MODEL` (`laya`) |
-| `vllm` (`d3-turbo`) | vLLM Semantic Router, `https://decision.vllm-sr.ai/v1/systemone` | `VLLM_SR_API_KEY` | `VLLM_SR_MODEL` (`vllm-sr/d3-turbo`) |
+| `vllm` (`d3-ultra`) | vLLM Semantic Router, `https://decision.vllm-sr.ai/v1/systemone` | `VLLM_SR_API_KEY` | `VLLM_SR_MODEL` (`vllm-sr/d3-ultra`) |
 
-- **Fallback order:** a list like `vllm,openrouter` asks d3-turbo first and falls back to Jev on OpenRouter. All routes share one time budget, `TIMEOUT_MS` (1500 ms by default).
+- **Fallback order:** a list like `vllm,openrouter` asks d3-ultra first and falls back to Jev on OpenRouter. All routes share one time budget, `TIMEOUT_MS` (1500 ms by default).
 - **Empty `PROVIDERS`:** the router picks by the keys you filled in, in this order: vLLM, then TypeSafe, then Laya.
 - **OpenRouter only by name:** OpenRouter is never picked by its key alone, because that key is used for other things.
 - **How each answer's confidence is read:**
   - Jev: its own confidence.
   - Laya: its `x_jev_confidence`, which is on Jev's scale. Laya's plain `confidence` means something else.
-  - Any other decision model (d3-turbo, or a non-Jev model on the Decisions API such as `perplexity/pplx-decider-v1.2`): its probabilities only.
+  - Any other decision model (d3-ultra, or a non-Jev model on the Decisions API such as `perplexity/pplx-decider-v1.2`): its probabilities only.
 - **Where keys can go:**
   - Each fixed route sends its key only to its own host.
   - `TYPESAFE_BASE_URL` only accepts `typesafe.ai` hosts unless `ALLOW_CUSTOM_BASE` is on.
@@ -95,7 +95,7 @@ The decision model's effort score (low, medium, high, xhigh or max) is sent as
 The router remembers which tier each chat last ran on. A switch away from it
 has to clear a confidence bar, which also keeps a provider's prompt cache warm.
 
-- **The bar:** `STICKY_CONFIDENCE` sets it, 0.75 by default. `DECIDER_BARS` sets a bar per decision model whose confidence is not Jev's, for example `d3-turbo=0.6,laya=60%`.
+- **The bar:** `STICKY_CONFIDENCE` sets it, 0.75 by default. `DECIDER_BARS` sets a bar per decision model whose confidence is not Jev's, for example `d3-ultra=0.6,laya=60%`.
 - **What a hold keeps:** the tier is held, but the new effort still applies.
 - **No answer:** if no decision model answers (timeout, error, bad key), the chat stays on its tier. A chat's first turn goes to `FALLBACK_TIER` instead. The status line says why.
 - **Memory:** the per-chat memory lives in the function's process and resets when Open WebUI restarts.

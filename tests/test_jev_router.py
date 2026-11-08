@@ -65,7 +65,7 @@ def test_named_routes_in_order_with_their_fixed_hosts():
     )
     assert why is None
     assert [(r.name, r.endpoint, r.model) for r in routes] == [
-        ("vllm", "https://decision.vllm-sr.ai/v1/systemone", "vllm-sr/d3-turbo"),
+        ("vllm", "https://decision.vllm-sr.ai/v1/systemone", "vllm-sr/d3-ultra"),
         ("openrouter-decisions", "https://openrouter.ai/api/alpha/decisions", "typesafe/jev-1.14"),
         ("laya", "https://laya.example.com/v1/systemone", "laya"),
         ("openrouter", "https://openrouter.ai/api/v1/systemone", "typesafe/jev-1.14"),
@@ -74,7 +74,7 @@ def test_named_routes_in_order_with_their_fixed_hosts():
 
 
 def test_aliases_and_duplicates():
-    routes, _ = jr.routes_of({"PROVIDERS": "d3-turbo,jev,vllm-sr,decisions", "VLLM_SR_API_KEY": "v", "TYPESAFE_API_KEY": "t", "OPENROUTER_API_KEY": "o"})
+    routes, _ = jr.routes_of({"PROVIDERS": "d3-ultra,jev,vllm-sr,decisions", "VLLM_SR_API_KEY": "v", "TYPESAFE_API_KEY": "t", "OPENROUTER_API_KEY": "o"})
     assert [r.name for r in routes] == ["vllm", "typesafe", "openrouter-decisions"]
 
 
@@ -119,10 +119,10 @@ def test_keys_and_models_that_cannot_be_sent_are_refused():
 def test_who_answered_and_which_confidence_counts():
     ts = jr.Route("typesafe", "", "jev-latest", "k")
     laya = jr.Route("laya", "", "multilingual", "")
-    vllm = jr.Route("vllm", "", "vllm-sr/d3-turbo", "k")
+    vllm = jr.Route("vllm", "", "vllm-sr/d3-ultra", "k")
     or_jev = jr.Route("openrouter-decisions", "", "typesafe/jev-1.14", "k")
     pplx = jr.Route("openrouter-decisions", "", "perplexity/pplx-decider-v1.2", "k")
-    assert [jr.label_of(r) for r in (ts, laya, vllm, or_jev, pplx)] == ["Jev", "Laya", "d3-turbo", "Jev", "pplx-decider-v1.2"]
+    assert [jr.label_of(r) for r in (ts, laya, vllm, or_jev, pplx)] == ["Jev", "Laya", "d3-ultra", "Jev", "pplx-decider-v1.2"]
     assert [jr.confidence_source_of(r) for r in (ts, laya, vllm, or_jev, pplx)] == ["jev", "x_jev", "probabilities", "jev", "probabilities"]
 
 
@@ -158,7 +158,7 @@ def test_keyless_laya_sends_no_authorization():
 
 
 def test_errors_are_named_and_keys_scrubbed():
-    route = jr.Route("vllm", "u", "vllm-sr/d3-turbo", "secret-key-999")
+    route = jr.Route("vllm", "u", "vllm-sr/d3-ultra", "secret-key-999")
     r = run(jr.ask(route, "hi", FOUR, 1.0, FakeFetch((401, '{"error":{"type":"auth_error"}}'))))
     assert r == {"ok": False, "reason": "vllm said HTTP 401 (auth_error)"}
     r = run(jr.ask(route, "hi", FOUR, 1.0, FakeFetch(RuntimeError("boom with secret-key-999 and Bearer abc123"))))
@@ -168,7 +168,7 @@ def test_errors_are_named_and_keys_scrubbed():
 
 
 def test_chain_falls_through_to_the_next_route():
-    a = jr.Route("vllm", "a", "vllm-sr/d3-turbo", "k")
+    a = jr.Route("vllm", "a", "vllm-sr/d3-ultra", "k")
     b = jr.Route("openrouter", "b", "typesafe/jev-1.14", "k")
     fetch = FakeFetch((503, ""), (200, jev_answer()))
     result = run(jr.ask_chain([a, b], "hi", FOUR, 1500, fetch))
@@ -177,7 +177,7 @@ def test_chain_falls_through_to_the_next_route():
 
 
 def test_chain_stops_after_a_timeout_and_says_who_said_what():
-    a = jr.Route("vllm", "a", "vllm-sr/d3-turbo", "k")
+    a = jr.Route("vllm", "a", "vllm-sr/d3-ultra", "k")
     b = jr.Route("openrouter", "b", "typesafe/jev-1.14", "k")
     fetch = FakeFetch("hang", (200, jev_answer()))
     result = run(jr.ask_chain([a, b], "hi", FOUR, 150, fetch))
@@ -207,9 +207,9 @@ def test_tier_not_offered_is_no_decision():
 
 def test_probabilities_only_for_other_models():
     answers = json.loads(jev_answer("opus", 0.99, 2, {"haiku": 0.05, "sonnet": 0.05, "opus": 0.85, "fable": 0.05}))["answers"]
-    d = jr.decision_of(answers, FOUR, "probabilities", "d3-turbo")
+    d = jr.decision_of(answers, FOUR, "probabilities", "d3-ultra")
     assert d.confidence == pytest.approx((4 * 0.85 - 1) / 3)
-    assert d.decider == "d3-turbo"
+    assert d.decider == "d3-ultra"
 
 
 def test_laya_reads_x_jev_confidence_never_confidence():
@@ -226,9 +226,9 @@ def test_choice_and_probabilities_disagreeing_is_not_sure():
 
 def test_bars():
     assert [jr.confidence_share_of(x) for x in ("0.6", "60", "60%", "1.5", "0", "100", "abc", "0x40")] == [0.6, 0.6, 0.6, None, None, None, None, None]
-    bars = jr.bars_of("perplexity/pplx-decider-v1.2=0.5, d3-turbo=60%;laya=0.7 bad=x")
-    assert bars == {"perplexity/pplx-decider-v1.2": 0.5, "d3-turbo": 0.6, "laya": 0.7}
-    assert jr.bar_for(bars, jr.Route("vllm", "", "vllm-sr/d3-turbo", "k")) == 0.6
+    bars = jr.bars_of("perplexity/pplx-decider-v1.2=0.5, d3-ultra=60%;laya=0.7 bad=x")
+    assert bars == {"perplexity/pplx-decider-v1.2": 0.5, "d3-ultra": 0.6, "laya": 0.7}
+    assert jr.bar_for(bars, jr.Route("vllm", "", "vllm-sr/d3-ultra", "k")) == 0.6
     assert jr.bar_for(bars, jr.Route("laya", "", "multilingual", "")) == 0.7
     assert jr.bar_for(bars, jr.Route("typesafe", "", "jev-latest", "k")) is None
 
@@ -291,12 +291,12 @@ def test_decide_holds_a_shaky_switch_in_the_same_chat():
 
 
 def test_decide_uses_a_decider_bar():
-    pipe = make_pipe(PROVIDERS="vllm", VLLM_SR_API_KEY="v", DECIDER_BARS="d3-turbo=0.5")
+    pipe = make_pipe(PROVIDERS="vllm", VLLM_SR_API_KEY="v", DECIDER_BARS="d3-ultra=0.5")
     probs = {"haiku": 0.1, "sonnet": 0.1, "opus": 0.7, "fable": 0.1}  # confidence 0.6
     pipe._fetch = FakeFetch((200, jev_answer("opus", None, 2, probs)))
     pipe.remember("c", "sonnet")
     plan = run(pipe.decide([{"role": "user", "content": "b"}], "c"))
-    assert plan.tier == "opus" and plan.held is None and "d3-turbo 60%" in plan.status
+    assert plan.tier == "opus" and plan.held is None and "d3-ultra 60%" in plan.status
 
 
 def test_decide_falls_back_and_stays():

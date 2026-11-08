@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1 — 2026-11-08
+
+- The vllm route defaults to `vllm-sr/d3-ultra` instead of `vllm-sr/d3-turbo`:
+  vLLM Semantic Router serves `vllm-sr/d3-turbo` as `vllm-sr/d3-ultra` (same answers, the response names d3-ultra) and the key's quota lists only d3-ultra. `d3-turbo` stays a name for the route; the `VLLM_SR_MODEL` valve
+  still picks another.
+
 ## 0.2.0 — 2026-10-24
 
 ### Features

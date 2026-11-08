@@ -2,8 +2,8 @@
 title: Jev Router
 author: Daltonganger
 author_url: https://github.com/Daltonganger/jev-openwebui-router
-description: Routes each chat turn to the model and reasoning effort a decision model picks: TypeSafe's Jev (direct or on OpenRouter), OpenRouter's Decisions API, your own Laya server, or vLLM Semantic Router's d3-turbo.
-version: 0.2.0
+description: Routes each chat turn to the model and reasoning effort a decision model picks: TypeSafe's Jev (direct or on OpenRouter), OpenRouter's Decisions API, your own Laya server, or vLLM Semantic Router's d3-ultra.
+version: 0.2.1
 license: MIT
 required_open_webui_version: 0.5.0
 """
@@ -119,6 +119,7 @@ ROUTE_NAMES = {
     "laya": "laya",
     "vllm": "vllm",
     "vllm-sr": "vllm",
+    "d3-ultra": "vllm",
     "d3-turbo": "vllm",
     "semantic": "vllm",
 }
@@ -318,7 +319,7 @@ def _build(name: str, cfg: dict) -> tuple[Optional[Route], Optional[str]]:
         key = get("VLLM_SR_API_KEY")
         if not key:
             return None, "vllm is listed but VLLM_SR_API_KEY is not set"
-        return Route("vllm", FIXED["vllm"], get("VLLM_SR_MODEL") or "vllm-sr/d3-turbo", key), None
+        return Route("vllm", FIXED["vllm"], get("VLLM_SR_MODEL") or "vllm-sr/d3-ultra", key), None
     return None, f"unknown route {name}"
 
 
@@ -687,7 +688,7 @@ class Pipe:
 
         PROVIDERS: str = Field(
             default="",
-            description="Decision models to ask, in order, comma-separated: typesafe (Jev direct), openrouter (Jev on OpenRouter, System One), openrouter-decisions (OpenRouter's Decisions API), laya (your own server), vllm (d3-turbo). E.g. 'vllm,openrouter'. Empty: chosen by the keys set (vllm, then typesafe, then laya; OpenRouter only by name).",
+            description="Decision models to ask, in order, comma-separated: typesafe (Jev direct), openrouter (Jev on OpenRouter, System One), openrouter-decisions (OpenRouter's Decisions API), laya (your own server), vllm (d3-ultra). E.g. 'vllm,openrouter'. Empty: chosen by the keys set (vllm, then typesafe, then laya; OpenRouter only by name).",
         )
         TIMEOUT_MS: int = Field(
             default=DEFAULT_TIMEOUT_MS,
@@ -710,14 +711,14 @@ class Pipe:
         LAYA_API_KEY: str = Field(default="", description="Laya key, if your server asks for one.", json_schema_extra={"input": {"type": "password"}})
         LAYA_MODEL: str = Field(default="", description="Model on your Laya server; laya when empty.")
 
-        VLLM_SR_API_KEY: str = Field(default="", description="vLLM Semantic Router key, for vllm (d3-turbo).", json_schema_extra={"input": {"type": "password"}})
-        VLLM_SR_MODEL: str = Field(default="", description="Model on vllm; vllm-sr/d3-turbo when empty.")
+        VLLM_SR_API_KEY: str = Field(default="", description="vLLM Semantic Router key, for vllm (d3-ultra).", json_schema_extra={"input": {"type": "password"}})
+        VLLM_SR_MODEL: str = Field(default="", description="Model on vllm; vllm-sr/d3-ultra when empty.")
 
         STICKY: bool = Field(default=True, description="Hold a chat on the tier it last ran on when the decision model is not sure of a switch.")
         STICKY_CONFIDENCE: str = Field(default="0.75", description="The confidence a switch must clear: 0.75, 75 or 75%.")
         DECIDER_BARS: str = Field(
             default="perplexity/pplx-decider-v1.2=0.5",
-            description="A bar per decision model whose confidence is not Jev's: model id, id after the /, or route name. E.g. 'd3-turbo=0.6,laya=60%'.",
+            description="A bar per decision model whose confidence is not Jev's: model id, id after the /, or route name. E.g. 'd3-ultra=0.6,laya=60%'.",
         )
         FALLBACK_TIER: Literal["haiku", "sonnet", "opus", "fable"] = Field(
             default="sonnet",
